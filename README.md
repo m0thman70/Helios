@@ -2,7 +2,7 @@
 
 this is atto, a new code editor similar to nano that came to existance with alot of AI and ALOT of Bullsh** but here we 
 the buffer works fine no mouse movements are detected in buffer
-you use WASD to move the cursor around
+you use CTRL + HJKL to move the cursor around
 there is no way to open a file with atto at the moment as it cant read from files
 it cant write to files either
 
