@@ -43,10 +43,10 @@ impl Atto {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('e') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => break,
-                    KeyCode::Char('w') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_up(),
-                    KeyCode::Char('s') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_down(),
-                    KeyCode::Char('a') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_left(),
-                    KeyCode::Char('d') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_right(),
+                    KeyCode::Char('j') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_up(),
+                    KeyCode::Char('k') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_down(),
+                    KeyCode::Char('h') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_left(),
+                    KeyCode::Char('l') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_right(),
                     KeyCode::Enter => self.new_line(),
                     KeyCode::Char(v) => self.input_char(v),
                     KeyCode::Backspace => self.backspace(),
