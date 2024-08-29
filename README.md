@@ -14,7 +14,7 @@ bugs: cant write to an empty file the file needs to have stuff in it and you nee
 
 `CTRL + Q` -> exit
 `CTRL + HJKL` -> move cursor
-`CTRL + S` -> save file
+`CTRL + W` -> save file
 `CTRL + R` -> reload file
 
 ### Next steps:
