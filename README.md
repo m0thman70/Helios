@@ -8,6 +8,7 @@ this is atto, a new code editor similar to nano that came to existance with alot
 ### Notes:
 
 currently its in very early stages, this is version 0.0.2 so be sure to know that there is bugs 
+bugs: cant write to an empty file the file needs to have stuff in it and you need a file to use atto
 
 ### Binds:
 
