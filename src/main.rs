@@ -21,11 +21,11 @@ struct Atto {
     buffer: Vec<String>,
     terminal_height: usize,
     terminal_width: usize,
-    filename: String,
+    filename: Option<String>,
 }
 
 impl Atto {
-    fn new(filename: String) -> Self {
+    fn new(filename: Option<String>) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         Self {
             cursor_y: 0,
@@ -38,19 +38,27 @@ impl Atto {
     }
 
     fn read_file(&mut self) -> io::Result<()> {
-        let mut file = File::open(&self.filename)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        self.buffer = contents.lines().map(|line| line.to_string()).collect();
-        self.cursor_x = 0;
-        self.cursor_y = 0;
+        if let Some(ref filename) = self.filename {
+            let mut file = File::open(filename)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            self.buffer = if contents.is_empty() {
+                vec![String::new()]
+            } else {
+                contents.lines().map(|line| line.to_string()).collect()
+            };
+            self.cursor_x = 0;
+            self.cursor_y = 0;
+        }
         Ok(())
     }
 
     fn write_file(&self) -> io::Result<()> {
-        let mut file = OpenOptions::new().write(true).truncate(true).open(&self.filename)?;
-        for line in &self.buffer {
-            writeln!(file, "{}", line)?;
+        if let Some(ref filename) = self.filename {
+            let mut file = OpenOptions::new().write(true).truncate(true).open(filename)?;
+            for line in &self.buffer {
+                writeln!(file, "{}", line)?;
+            }
         }
         Ok(())
     }
@@ -159,11 +167,11 @@ impl Atto {
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: {} <filename>", args[0]);
-        std::process::exit(1);
-    }
-    let filename = args[1].clone();
+    let filename = if args.len() < 2 {
+        None
+    } else {
+        Some(args[1].clone())
+    };
     let mut atto = Atto::new(filename);
     atto.read_file()?;
     let stdout = io::stdout();
