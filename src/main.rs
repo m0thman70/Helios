@@ -3,7 +3,9 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::io;
+use std::io::{self, Read, Write};
+use std::env;
+use std::fs::{File, OpenOptions};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
@@ -19,10 +21,11 @@ struct Atto {
     buffer: Vec<String>,
     terminal_height: usize,
     terminal_width: usize,
+    filename: String,
 }
 
 impl Atto {
-    fn new() -> Self {
+    fn new(filename: String) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         Self {
             cursor_y: 0,
@@ -30,7 +33,26 @@ impl Atto {
             buffer: vec![String::new()],
             terminal_height: height as usize,
             terminal_width: width as usize,
+            filename,
         }
+    }
+
+    fn read_file(&mut self) -> io::Result<()> {
+        let mut file = File::open(&self.filename)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        self.buffer = contents.lines().map(|line| line.to_string()).collect();
+        self.cursor_x = 0;
+        self.cursor_y = 0;
+        Ok(())
+    }
+
+    fn write_file(&self) -> io::Result<()> {
+        let mut file = OpenOptions::new().write(true).truncate(true).open(&self.filename)?;
+        for line in &self.buffer {
+            writeln!(file, "{}", line)?;
+        }
+        Ok(())
     }
 
     fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
@@ -42,11 +64,13 @@ impl Atto {
 
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('e') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => break,
+                    KeyCode::Char('q') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => break,
                     KeyCode::Char('j') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_up(),
                     KeyCode::Char('k') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_down(),
                     KeyCode::Char('h') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_left(),
                     KeyCode::Char('l') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_right(),
+                    KeyCode::Char('w') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.write_file()?,
+                    KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.read_file()?,
                     KeyCode::Enter => self.new_line(),
                     KeyCode::Char(v) => self.input_char(v),
                     KeyCode::Backspace => self.backspace(),
@@ -99,13 +123,13 @@ impl Atto {
     }
 
     fn move_right(&mut self) {
-        if self.cursor_x < self.buffer[self.cursor_y].len() {
+        if self.cursor_y < self.buffer.len() && self.cursor_x < self.buffer[self.cursor_y].len() {
             self.cursor_x += 1;
         }
     }
 
     fn input_char(&mut self, c: char) {
-        if self.cursor_x < self.terminal_width - 1 {
+        if self.cursor_y < self.buffer.len() && self.cursor_x < self.terminal_width - 1 {
             self.buffer[self.cursor_y].insert(self.cursor_x, c);
             self.cursor_x += 1;
         }
@@ -134,11 +158,18 @@ impl Atto {
 }
 
 fn main() -> io::Result<()> {
-    let mut atto = Atto::new();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <filename>", args[0]);
+        std::process::exit(1);
+    }
+    let filename = args[1].clone();
+    let mut atto = Atto::new(filename);
+    atto.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    atto.run(&mut terminal)
+    atto.run(&mut terminal)?;
+    atto.write_file()?;
+    Ok(())
 }
-
-
