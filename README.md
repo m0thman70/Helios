@@ -1,17 +1,25 @@
 # Atto!
 
-this is atto, a new code editor similar to nano that came to existance with alot of AI and ALOT of Bullsh** but here we 
-the buffer works fine no mouse movements are detected in buffer
-you use CTRL + HJKL to move the cursor around
-there is no way to open a file with atto at the moment as it cant read from files
-it cant write to files either
+this is atto, a new code editor similar to nano that came to existance with alot of AI and ALOT of Bullsh** but here we are
 
-### next steps
+### Deps: 
+  - rust
 
-- add file reading and writing
-- possibly add some customisation
-- potentionally use ICED to make it to a GUI under a similar name
+### Notes:
 
-feel free to fork or contribute to this project, i need help :]
+currently its in very early stages, this is version 0.0.2 so be sure to know that there is bugs 
 
-~Dom
+### Binds:
+
+`CTRL + Q` -> exit
+`CTRL + HJKL` -> move cursor
+`CTRL + S` -> save file
+`CTRL + R` -> reload file
+
+### Next steps:
+
+People want to see stuff like modes and a command so, we may do that but for now atto is fully usable and for now enjoy it as a simple nano like!
+
+### Install:
+
+let me figure that out for every distro and os
