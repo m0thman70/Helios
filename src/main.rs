@@ -74,8 +74,7 @@ impl Atto {
         }
 
         let paragraph = Paragraph::new(lines.iter().map(|line| Spans::from(Span::raw(line))).collect::<Vec<_>>())
-            .block(block)
-            .style(Style::default().fg(Color::White));
+            .block(block);
         f.render_widget(paragraph, size);
     }
 
