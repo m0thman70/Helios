@@ -38,4 +38,10 @@ So after some people used it, here is a list of a few things that people seeming
 
 ### Install:
 
-let me figure that out for every distro and os
+`git clone https://github.com/m0thman70/Atto`
+`cd atto`
+`cargo build --release`
+`chmod +x atto`
+`./atto`
+and boom you got atto compiled, if you wanna install it, give me some time
+also atto does not have the capability to create files, please use `touch`  
