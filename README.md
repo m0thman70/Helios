@@ -44,7 +44,7 @@ So after some people used it, here is a list of a few things that people seeming
 
 `cargo build --release`
 
-`cd target/release/atto`
+`cd target/release`
 
 `chmod +x atto`
 
