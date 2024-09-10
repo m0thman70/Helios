@@ -33,6 +33,7 @@ So after some people used it, here is a list of a few things that people seeming
 
 - syntax highlighting -> possibly tree sitter
 - commands -> no idea how
+- a few people adsked for modes but thats gonna be sidelined
 
 ### Install:
 
