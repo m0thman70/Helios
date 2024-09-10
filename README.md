@@ -54,3 +54,5 @@ So after some people used it, here is a list of a few things that people seeming
 and boom you got atto compiled
 
 also atto does not have the capability to create files, please use `touch`  
+
+if you wanna insall, instead of `cargo build` do `cargo install --path <path>`
