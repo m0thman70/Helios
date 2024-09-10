@@ -1,6 +1,6 @@
 # Atto!
 
-this is atto, a new code editor similar to nano that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
+this is atto, a new code editor similar to nano,vim and emacs that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
 
 
 ## Bugs I am aware of:
