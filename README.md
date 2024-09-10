@@ -8,10 +8,10 @@ this is atto, a new code editor similar to nano,vim and emacs that came to exist
 cursor highlighting instead of taking up one cell
 
 
-### Deps: 
-  - rust
-  - cargo
+### Deps:
 
+  - rust
+    
 ### Notes:
 
 currently its in very early stages, this is version 0.0.2 so be sure to know that there is bugs 
