@@ -36,7 +36,7 @@ So after some people used it, here is a list of a few things that people seeming
 - commands -> no idea how
 - a few people adsked for modes but thats gonna be sidelined
 
-### Install:
+### Compile:
 
 `git clone https://github.com/m0thman70/Atto`
 
@@ -50,6 +50,6 @@ So after some people used it, here is a list of a few things that people seeming
 
 `./atto`
 
-and boom you got atto compiled, if you wanna install it, give me some time
+and boom you got atto compiled
 
 also atto does not have the capability to create files, please use `touch`  
