@@ -22,6 +22,7 @@ struct Atto {
     terminal_height: usize,
     terminal_width: usize,
     filename: Option<String>,
+    show_binds: bool,
 }
 
 impl Atto {
@@ -34,6 +35,7 @@ impl Atto {
             terminal_height: height as usize,
             terminal_width: width as usize,
             filename,
+            show_binds: false,
         }
     }
 
@@ -79,6 +81,7 @@ impl Atto {
                     KeyCode::Char('l') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_right(),
                     KeyCode::Char('w') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.write_file()?,
                     KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.read_file()?,
+                    KeyCode::Esc => self.show_binds = !self.show_binds,
                     KeyCode::Enter => self.new_line(),
                     KeyCode::Char(v) => self.input_char(v),
                     KeyCode::Backspace => self.backspace(),
@@ -112,8 +115,39 @@ impl Atto {
                 Spans::from(Span::raw(line))
             }).collect::<Vec<_>>()
         ).block(block);
-        f.render_widget(paragraph, size)
+        f.render_widget(paragraph, size);
+
+        if self.show_binds {
+            let popup_block = Block::default().borders(Borders::ALL).title("Keybindings");
+            let popup_area = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .split(size)[1];
+
+            let hints = vec![
+                KeyBindingHint::new("Ctrl-Q", "Quit"),
+                KeyBindingHint::new("Ctrl-K", "Move Up"),
+                KeyBindingHint::new("Ctrl-J", "Move Down"),
+                KeyBindingHint::new("Ctrl-H", "Move Left"),
+                KeyBindingHint::new("Ctrl-L", "Move Right"),
+                KeyBindingHint::new("Ctrl-W", "Save"),
+                KeyBindingHint::new("Ctrl-R", "Reload"),
+            ];
+
+            let hint_lines: Vec<Spans> = hints.iter().map(|hint| {
+                Spans::from(vec![
+                    Span::styled(&hint.key, Style::default().fg(Color::Yellow)),
+                    Span::raw(" - "),
+                    Span::raw(&hint.description),
+                ])
+            }).collect();
+
+            let hint_paragraph = Paragraph::new(hint_lines).block(popup_block);
+            f.render_widget(hint_paragraph, popup_area);
+        }
     }
+
+
 
     fn input_tab(&mut self) {
         if self.cursor_y < self.buffer.len() && self.cursor_x < self.terminal_width {
@@ -177,6 +211,19 @@ impl Atto {
     }
 }
 
+struct KeyBindingHint {
+    key: String,
+    description: String,
+}
+
+impl KeyBindingHint {
+    fn new(key: &str, description: &str) -> Self {
+        Self {
+            key: key.to_string(),
+            description: description.to_string(),
+        }
+    }
+}
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let filename = if args.len() < 2 {
