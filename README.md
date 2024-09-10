@@ -20,13 +20,19 @@ bugs: cant write to an empty file the file needs to have stuff in it and you nee
 ### Binds:
 
 `CTRL + Q` -> exit
+
 `CTRL + HJKL` -> move cursor
+
 `CTRL + W` -> save file
+
 `CTRL + R` -> reload file
 
 ### Next steps:
 
-People want to see stuff like modes and a command so, we may do that but for now atto is fully usable and for now enjoy it as a simple nano like!
+So after some people used it, here is a list of a few things that people seemingly want to see:
+
+- syntax highlighting -> possibly tree sitter
+- commands -> no idea how
 
 ### Install:
 
