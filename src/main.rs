@@ -82,6 +82,7 @@ impl Atto {
                     KeyCode::Enter => self.new_line(),
                     KeyCode::Char(v) => self.input_char(v),
                     KeyCode::Backspace => self.backspace(),
+                    KeyCode::Tab => self.input_tab(),
                     _ => {}
                 }
             }
@@ -105,9 +106,20 @@ impl Atto {
             }
         }
 
-        let paragraph = Paragraph::new(lines.iter().map(|line| Spans::from(Span::raw(line))).collect::<Vec<_>>())
-            .block(block);
-        f.render_widget(paragraph, size);
+        let paragraph = Paragraph::new(
+            lines.iter().map(|line| {
+                let line = line.replace("\t", "    "); // Replace tabs with spaces
+                Spans::from(Span::raw(line))
+            }).collect::<Vec<_>>()
+        ).block(block);
+        f.render_widget(paragraph, size)
+    }
+
+    fn input_tab(&mut self) {
+        if self.cursor_y < self.buffer.len() && self.cursor_x < self.terminal_width {
+            self.buffer[self.cursor_y].insert_str(self.cursor_x, "    ");
+            self.cursor_x += 4;
+        }
     }
 
     fn move_up(&mut self) {
