@@ -5,11 +5,12 @@ this is atto, a new code editor similar to nano that came to existance with alot
 
 ## Bugs I am aware of:
 
-tab not working properly, maybe because it's just moving the cursor instead of actually inserting 4 spaces, need to fix
+tab bug fixed
 
 
 ### Deps: 
   - rust
+  - cargo
 
 ### Notes:
 
