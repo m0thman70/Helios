@@ -19,6 +19,8 @@ bugs: cant write to an empty file the file needs to have stuff in it and you nee
 
 ### Binds:
 
+`ESC` -> to see binds
+
 `CTRL + Q` -> exit
 
 `CTRL + HJKL` -> move cursor
