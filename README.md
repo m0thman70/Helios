@@ -31,6 +31,7 @@ bugs: cant write to an empty file the file needs to have stuff in it and you nee
 
 So after some people used it, here is a list of a few things that people seemingly want to see:
 
+- add something similar to which-key
 - syntax highlighting -> possibly tree sitter
 - commands -> no idea how
 - a few people adsked for modes but thats gonna be sidelined
