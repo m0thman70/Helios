@@ -1,0 +1,1 @@
+git clone https://github.com/m0thman70/Atto && cd Atto && cargo build --release && cd target/release && mv atto /bin/atto && chmod +x /bin/atto
