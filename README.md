@@ -5,7 +5,7 @@ this is atto, a new code editor similar to nano,vim and emacs that came to exist
 
 ## Bugs I am aware of:
 
-cursor highlighting instead of taking up one cell
+cursor takes up taking up one cell
 no buffer expansion or scrolling
 
 
