@@ -18,8 +18,7 @@ no buffer expansion or scrolling
 
 ### Notes:
 
-currently its in very early stages, this is version 0.0.2 so be sure to know that there is bugs 
-bugs: cant write to an empty file the file needs to have stuff in it and you need a file to use atto
+currently its in very early stages, this is version 0.0.3 so be sure to know that there is bugs 
 
 ### Binds:
 
