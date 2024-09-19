@@ -25,7 +25,7 @@ currently its in very early stages, this is version 0.0.3 so be sure to know tha
 
 `CTRL + Q` -> exit
 
-`CTRL + HJKL` -> move cursor
+`arrows` -> move cursor
 
 `CTRL + W` -> save file
 
