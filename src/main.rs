@@ -2,9 +2,8 @@ use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    cursor::{MoveTo, Show, Hide},
 };
-//use tree_sitter::{Parser, Language, Node};
-//use tree_sitter_highlight::{Highlighter, HighlightConfiguration, HighlightEvent, Highlight};
 use std::io::{self, Read, Write};
 use std::env;
 use std::fs::{File, OpenOptions};
@@ -17,11 +16,6 @@ use tui::{
     Terminal,
 };
 
-/* extern "C" {
-    fn tree_sitter_rust() -> Language;
-    fn tree_sitter_c() -> Language;
-    fn tree_sitter_haskell() -> Language;
-} */
 struct Atto {
     cursor_x: usize,
     cursor_y: usize,
@@ -30,7 +24,7 @@ struct Atto {
     terminal_width: usize,
     filename: Option<String>,
     show_binds: bool,
-    //language: Language,
+    scroll_offset: usize,
 }
 
 impl Atto {
@@ -44,7 +38,7 @@ impl Atto {
             terminal_width: width as usize,
             filename,
             show_binds: false,
-            //language,
+            scroll_offset: 0,
         }
     }
 
@@ -76,10 +70,13 @@ impl Atto {
 
     fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
         enable_raw_mode()?;
-        execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+        execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture, Show)?;
 
         loop {
             terminal.draw(|f| self.render(f))?;
+
+            // Move the cursor to the correct position
+            execute!(io::stdout(), MoveTo(self.cursor_x as u16 + 5, self.cursor_y as u16 - self.scroll_offset as u16 + 1), Show)?;
 
             if let Event::Key(key) = event::read()? {
                 match key.code {
@@ -101,7 +98,7 @@ impl Atto {
         }
 
         disable_raw_mode()?;
-        execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture)?;
+        execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture, Show)?;
         Ok(())
     }
 
@@ -109,19 +106,11 @@ impl Atto {
         let size = f.size();
         let block = Block::default().borders(Borders::ALL).title("Atto");
 
-        let mut lines = self.buffer.clone();
-        if self.cursor_y < lines.len() {
-            if self.cursor_x < lines[self.cursor_y].len() {
-                lines[self.cursor_y].insert(self.cursor_x, '|');
-            } else {
-                lines[self.cursor_y].push('|');
-            }
-        }
-
         let paragraph = Paragraph::new(
-            lines.iter().map(|line| {
-                let line = line.replace("\t", "    ");
-                Spans::from(Span::raw(line))
+            self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
+                let line_number = format!("{:<4} ", i + 1);
+                let line_with_number = format!("{}{}", line_number, line.replace("\\t", "    "));
+                Spans::from(Span::raw(line_with_number))
             }).collect::<Vec<_>>()
         ).block(block);
         f.render_widget(paragraph, size);
@@ -156,8 +145,6 @@ impl Atto {
         }
     }
 
-
-
     fn input_tab(&mut self) {
         if self.cursor_y < self.buffer.len() && self.cursor_x < self.terminal_width {
             self.buffer[self.cursor_y].insert_str(self.cursor_x, "    ");
@@ -168,6 +155,9 @@ impl Atto {
     fn move_up(&mut self) {
         if self.cursor_y > 0 {
             self.cursor_y -= 1;
+            if self.cursor_y < self.scroll_offset {
+                self.scroll_offset -= 1;
+            }
             self.cursor_x = std::cmp::min(self.cursor_x, self.buffer[self.cursor_y].len());
         }
     }
@@ -175,6 +165,9 @@ impl Atto {
     fn move_down(&mut self) {
         if self.cursor_y < self.buffer.len() - 1 {
             self.cursor_y += 1;
+            if self.cursor_y >= self.scroll_offset + (self.terminal_height - 1) {
+                self.scroll_offset += 1;
+            }
             self.cursor_x = std::cmp::min(self.cursor_x, self.buffer[self.cursor_y].len());
         }
     }
@@ -199,11 +192,12 @@ impl Atto {
     }
 
     fn new_line(&mut self) {
-        if self.cursor_y < self.terminal_height - 1 {
-            let new_line = self.buffer[self.cursor_y].split_off(self.cursor_x);
-            self.buffer.insert(self.cursor_y + 1, new_line);
-            self.cursor_y += 1;
-            self.cursor_x = 0;
+        let new_line = self.buffer[self.cursor_y].split_off(self.cursor_x);
+        self.buffer.insert(self.cursor_y + 1, new_line);
+        self.cursor_y += 1;
+        self.cursor_x = 0;
+        if self.cursor_y >= self.scroll_offset + self.terminal_height {
+            self.scroll_offset += 1;
         }
     }
 
@@ -216,10 +210,12 @@ impl Atto {
             self.cursor_y -= 1;
             self.cursor_x = self.buffer[self.cursor_y].len();
             self.buffer[self.cursor_y].push_str(&current_line);
+            if self.cursor_y < self.scroll_offset {
+                self.scroll_offset -= 1;
+            }
         }
     }
 }
-
 
 struct KeyBindingHint {
     key: String,
@@ -234,6 +230,7 @@ impl KeyBindingHint {
         }
     }
 }
+
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let filename = if args.len() < 2 {
