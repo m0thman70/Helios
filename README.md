@@ -1,6 +1,6 @@
 # Atto!
 
-## HELP WANTED!:
+### HELP WANTED!:
 i need someone to create a logo for atto
 
 this is atto, a new code editor similar to nano,vim and emacs that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
