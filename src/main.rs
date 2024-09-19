@@ -3,6 +3,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+//use tree_sitter::{Parser, Language, Node};
+//use tree_sitter_highlight::{Highlighter, HighlightConfiguration, HighlightEvent, Highlight};
 use std::io::{self, Read, Write};
 use std::env;
 use std::fs::{File, OpenOptions};
@@ -15,6 +17,11 @@ use tui::{
     Terminal,
 };
 
+/* extern "C" {
+    fn tree_sitter_rust() -> Language;
+    fn tree_sitter_c() -> Language;
+    fn tree_sitter_haskell() -> Language;
+} */
 struct Atto {
     cursor_x: usize,
     cursor_y: usize,
@@ -23,6 +30,7 @@ struct Atto {
     terminal_width: usize,
     filename: Option<String>,
     show_binds: bool,
+    //language: Language,
 }
 
 impl Atto {
@@ -36,6 +44,7 @@ impl Atto {
             terminal_width: width as usize,
             filename,
             show_binds: false,
+            //language,
         }
     }
 
@@ -75,10 +84,10 @@ impl Atto {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => break,
-                    KeyCode::Char('k') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_up(),
-                    KeyCode::Char('j') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_down(),
-                    KeyCode::Char('h') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_left(),
-                    KeyCode::Char('l') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.move_right(),
+                    KeyCode::Up => self.move_up(),
+                    KeyCode::Down => self.move_down(),
+                    KeyCode::Left => self.move_left(),
+                    KeyCode::Right => self.move_right(),
                     KeyCode::Char('w') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.write_file()?,
                     KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.read_file()?,
                     KeyCode::Esc => self.show_binds = !self.show_binds,
@@ -103,15 +112,15 @@ impl Atto {
         let mut lines = self.buffer.clone();
         if self.cursor_y < lines.len() {
             if self.cursor_x < lines[self.cursor_y].len() {
-                lines[self.cursor_y].insert(self.cursor_x, '_');
+                lines[self.cursor_y].insert(self.cursor_x, '|');
             } else {
-                lines[self.cursor_y].push('_');
+                lines[self.cursor_y].push('|');
             }
         }
 
         let paragraph = Paragraph::new(
             lines.iter().map(|line| {
-                let line = line.replace("\t", "    "); // Replace tabs with spaces
+                let line = line.replace("\t", "    ");
                 Spans::from(Span::raw(line))
             }).collect::<Vec<_>>()
         ).block(block);
@@ -210,6 +219,7 @@ impl Atto {
         }
     }
 }
+
 
 struct KeyBindingHint {
     key: String,
