@@ -19,6 +19,8 @@ use tui::{
 struct Atto {
     cursor_x: usize,
     cursor_y: usize,
+    cursor_offset_x: u16,
+    cursor_offset_y: u16,
     buffer: Vec<String>,
     terminal_height: usize,
     terminal_width: usize,
@@ -33,6 +35,8 @@ impl Atto {
         Self {
             cursor_y: 0,
             cursor_x: 0,
+            cursor_offset_x: 6,
+            cursor_offset_y: 1,
             buffer: vec![String::new()],
             terminal_height: height as usize,
             terminal_width: width as usize,
@@ -76,7 +80,7 @@ impl Atto {
             terminal.draw(|f| self.render(f))?;
 
             // Move the cursor to the correct position
-            execute!(io::stdout(), MoveTo(self.cursor_x as u16 + 5, self.cursor_y as u16 - self.scroll_offset as u16 + 1), Show)?;
+            execute!(io::stdout(), MoveTo(self.cursor_x as u16 + self.cursor_offset_x, self.cursor_y as u16 - self.scroll_offset as u16 + self.cursor_offset_y), Show)?;
 
             if let Event::Key(key) = event::read()? {
                 match key.code {
