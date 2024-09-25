@@ -112,7 +112,7 @@ impl Atto {
 
         let paragraph = Paragraph::new(
             self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
-                let line_number = format!("{:<4} ", i + 1);
+                let line_number = format!("{:>4} ", i + 1);
                 let line_with_number = format!("{}{}", line_number, line.replace("\\t", "    "));
                 Spans::from(Span::raw(line_with_number))
             }).collect::<Vec<_>>()
