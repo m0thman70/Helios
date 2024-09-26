@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseEvent, MouseEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     cursor::{MoveTo, Show, Hide},
@@ -79,7 +79,6 @@ impl Atto {
         loop {
             terminal.draw(|f| self.render(f))?;
 
-            // Move the cursor to the correct position
             execute!(io::stdout(), MoveTo(self.cursor_x as u16 + self.cursor_offset_x, self.cursor_y as u16 - self.scroll_offset as u16 + self.cursor_offset_y), Show)?;
 
             if let Event::Key(key) = event::read()? {
@@ -96,6 +95,14 @@ impl Atto {
                     KeyCode::Char(v) => self.input_char(v),
                     KeyCode::Backspace => self.backspace(),
                     KeyCode::Tab => self.input_tab(),
+                    KeyCode::PageUp => self.page_up(),
+                    KeyCode::PageDown => self.page_down(),
+                    _ => {}
+                }
+            } else if let Event::Mouse(mouse_event) = event::read()? {
+                match mouse_event.kind {
+                    MouseEventKind::ScrollUp => self.scroll_up(),
+                    MouseEventKind::ScrollDown => self.scroll_down(),
                     _ => {}
                 }
             }
@@ -105,6 +112,47 @@ impl Atto {
         execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture, Show)?;
         Ok(())
     }
+
+    fn page_up(&mut self) {
+        if self.scroll_offset > 0 {
+            let scroll_amount = std::cmp::min(self.scroll_offset, self.terminal_height);
+            self.scroll_offset -= scroll_amount;
+            self.cursor_y = self.scroll_offset;
+        } else {
+            self.cursor_y = 0;
+        }
+        self.cursor_x = std::cmp::min(self.cursor_x, self.buffer[self.cursor_y].len());
+    }
+
+    fn page_down(&mut self) {
+        if self.scroll_offset + self.terminal_height < self.buffer.len() {
+            let scroll_amount = std::cmp::min(self.terminal_height, self.buffer.len() - self.scroll_offset - self.terminal_height);
+            self.scroll_offset += scroll_amount;
+            self.cursor_y = self.scroll_offset + self.terminal_height - 3;
+        } else {
+            self.cursor_y = self.buffer.len() - 3;
+        }
+        self.cursor_x = std::cmp::min(self.cursor_x, self.buffer[self.cursor_y].len());
+    }
+
+    fn scroll_up(&mut self) {
+        if self.scroll_offset > 0 {
+            self.scroll_offset -= 1;
+            if self.cursor_y > 0 {
+                self.cursor_y -= 1;
+            }
+        }
+    }
+
+    fn scroll_down(&mut self) {
+        if self.scroll_offset + self.terminal_height < self.buffer.len() {
+            self.scroll_offset += 1;
+            if self.cursor_y < self.buffer.len() - 1 {
+                self.cursor_y += 1;
+            }
+        }
+    }
+
 
     fn render<B: Backend>(&self, f: &mut tui::Frame<B>) {
         let size = f.size();
@@ -128,10 +176,6 @@ impl Atto {
 
             let hints = vec![
                 KeyBindingHint::new("Ctrl-Q", "Quit"),
-                KeyBindingHint::new("Ctrl-K", "Move Up"),
-                KeyBindingHint::new("Ctrl-J", "Move Down"),
-                KeyBindingHint::new("Ctrl-H", "Move Left"),
-                KeyBindingHint::new("Ctrl-L", "Move Right"),
                 KeyBindingHint::new("Ctrl-W", "Save"),
                 KeyBindingHint::new("Ctrl-R", "Reload"),
             ];
@@ -169,7 +213,7 @@ impl Atto {
     fn move_down(&mut self) {
         if self.cursor_y < self.buffer.len() - 1 {
             self.cursor_y += 1;
-            if self.cursor_y >= self.scroll_offset + (self.terminal_height - 1) {
+            if self.cursor_y >= self.scroll_offset + (self.terminal_height - 2) {
                 self.scroll_offset += 1;
             }
             self.cursor_x = std::cmp::min(self.cursor_x, self.buffer[self.cursor_y].len());
