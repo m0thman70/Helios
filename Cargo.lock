@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "atto"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cc",
  "crossterm 0.23.2",

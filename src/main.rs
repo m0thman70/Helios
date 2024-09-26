@@ -27,6 +27,7 @@ struct Atto {
     filename: Option<String>,
     show_binds: bool,
     scroll_offset: usize,
+    horizontal_scroll_offset: usize,
 }
 
 impl Atto {
@@ -43,6 +44,7 @@ impl Atto {
             filename,
             show_binds: false,
             scroll_offset: 0,
+            horizontal_scroll_offset: 0,
         }
     }
 
@@ -162,9 +164,15 @@ impl Atto {
             self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
                 let line_number = format!("{:>4} ", i + 1);
                 let line_with_number = format!("{}{}", line_number, line.replace("\\t", "    "));
-                Spans::from(Span::raw(line_with_number))
+                let visible_line = if line_with_number.len() > self.horizontal_scroll_offset {
+                    line_with_number[self.horizontal_scroll_offset..].to_string() // Clone the string slice
+                } else {
+                    String::new()
+                };
+                Spans::from(Span::raw(visible_line))
             }).collect::<Vec<_>>()
         ).block(block);
+
         f.render_widget(paragraph, size);
 
         if self.show_binds {
@@ -192,6 +200,8 @@ impl Atto {
             f.render_widget(hint_paragraph, popup_area);
         }
     }
+
+
 
     fn input_tab(&mut self) {
         if self.cursor_y < self.buffer.len() && self.cursor_x < self.terminal_width {
@@ -223,12 +233,18 @@ impl Atto {
     fn move_left(&mut self) {
         if self.cursor_x > 0 {
             self.cursor_x -= 1;
+            if self.cursor_x < self.horizontal_scroll_offset {
+                self.horizontal_scroll_offset -= 1;
+            }
         }
     }
 
     fn move_right(&mut self) {
         if self.cursor_y < self.buffer.len() && self.cursor_x < self.buffer[self.cursor_y].len() {
             self.cursor_x += 1;
+            if self.cursor_x >= self.horizontal_scroll_offset + self.terminal_width {
+                self.horizontal_scroll_offset += 7;
+            }
         }
     }
 
