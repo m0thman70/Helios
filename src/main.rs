@@ -15,6 +15,15 @@ use tui::{
     widgets::{Block, Borders, Paragraph},
     Terminal,
 };
+use rlua::{Lua, RluaCompat, Table};
+use std::path::Path;
+use crossterm::event::Event::Key;
+use crossterm::event::KeyModifiers;
+
+struct KeyBindings {
+    save: (KeyCode, KeyModifiers),
+    quit: (KeyCode, KeyModifiers),
+}
 
 struct Atto {
     cursor_x: usize,
@@ -28,11 +37,31 @@ struct Atto {
     show_binds: bool,
     scroll_offset: usize,
     horizontal_scroll_offset: usize,
+    key_bindings: KeyBindings,
+
 }
 
 impl Atto {
-    fn new(filename: Option<String>) -> Self {
+    fn new(filename: Option<String>, preset: &str) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
+        let key_bindings = match preset {
+            "atto" => KeyBindings {
+                save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+            },
+            "nano" => KeyBindings {
+                save: (KeyCode::Char('o'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('x'), KeyModifiers::CONTROL),
+            },
+            "micro" => KeyBindings {
+                save: (KeyCode::Char('s'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+            },
+            _ => KeyBindings {
+                save: (KeyCode::Char('s'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+            }
+        };
         Self {
             cursor_y: 0,
             cursor_x: 0,
@@ -45,6 +74,7 @@ impl Atto {
             show_binds: false,
             scroll_offset: 0,
             horizontal_scroll_offset: 0,
+            key_bindings,
         }
     }
 
@@ -84,21 +114,21 @@ impl Atto {
             execute!(io::stdout(), MoveTo(self.cursor_x as u16 + self.cursor_offset_x, self.cursor_y as u16 - self.scroll_offset as u16 + self.cursor_offset_y), Show)?;
 
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => break,
-                    KeyCode::Up => self.move_up(),
-                    KeyCode::Down => self.move_down(),
-                    KeyCode::Left => self.move_left(),
-                    KeyCode::Right => self.move_right(),
-                    KeyCode::Char('w') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.write_file()?,
-                    KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.read_file()?,
-                    KeyCode::Esc => self.show_binds = !self.show_binds,
-                    KeyCode::Enter => self.new_line(),
-                    KeyCode::Char(v) => self.input_char(v),
-                    KeyCode::Backspace => self.backspace(),
-                    KeyCode::Tab => self.input_tab(),
-                    KeyCode::PageUp => self.page_up(),
-                    KeyCode::PageDown => self.page_down(),
+                match (key.code, key.modifiers) {
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
+                    (KeyCode::Up, _) => self.move_up(),
+                    (KeyCode::Down, _) => self.move_down(),
+                    (KeyCode::Left, _) => self.move_left(),
+                    (KeyCode::Right, _) => self.move_right(),
+                    (KeyCode::Char('r'), KeyModifiers::CONTROL) => self.read_file()?,
+                    (KeyCode::Esc, _) => self.show_binds = !self.show_binds,
+                    (KeyCode::Enter, _) => self.new_line(),
+                    (KeyCode::Char(v), _) => self.input_char(v),
+                    (KeyCode::Backspace, _) => self.backspace(),
+                    (KeyCode::Tab, _) => self.input_tab(),
+                    (KeyCode::PageUp, _) => self.page_up(),
+                    (KeyCode::PageDown, _) => self.page_down(),
                     _ => {}
                 }
             } else if let Event::Mouse(mouse_event) = event::read()? {
@@ -302,7 +332,23 @@ fn main() -> io::Result<()> {
     } else {
         Some(args[1].clone())
     };
-    let mut atto = Atto::new(filename);
+
+    
+    let lua = Lua::new();
+    let config_path = if Path::new("config.lua").exists() {
+        "config.lua"
+    } else if Path::new("atto.lua").exists() {
+        "atto.lua"
+    } else {
+        panic!("No configuration file found!");
+    };
+
+    let preset: String = lua.context(|lua_ctx| {
+        let config: Table = lua_ctx.load(&std::fs::read_to_string(config_path).unwrap()).eval().unwrap();
+        config.get("key_binding_preset").unwrap()
+    });
+
+    let mut atto = Atto::new(filename, &preset);
     atto.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
