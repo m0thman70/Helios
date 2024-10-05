@@ -17,12 +17,16 @@ use tui::{
 };
 use rlua::{Lua, RluaCompat, Table};
 use std::path::Path;
+use crossterm::event::{KeyEvent, KeyModifiers};
 use crossterm::event::Event::Key;
-use crossterm::event::KeyModifiers;
 
 struct KeyBindings {
     save: (KeyCode, KeyModifiers),
     quit: (KeyCode, KeyModifiers),
+    move_up: (KeyCode, KeyModifiers),
+    move_down: (KeyCode, KeyModifiers),
+    move_left: (KeyCode, KeyModifiers),
+    move_right: (KeyCode, KeyModifiers),
 }
 
 struct Atto {
@@ -48,18 +52,42 @@ impl Atto {
             "atto" => KeyBindings {
                 save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
             },
             "nano" => KeyBindings {
                 save: (KeyCode::Char('o'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('x'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
             },
             "micro" => KeyBindings {
                 save: (KeyCode::Char('s'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+            },
+            "emacs" => KeyBindings {
+                save: (KeyCode::Char('x'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('c'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('p'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('n'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('b'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('f'), KeyModifiers::CONTROL),
             },
             _ => KeyBindings {
-                save: (KeyCode::Char('s'), KeyModifiers::CONTROL),
-                quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+                save: (KeyCode::Char('t'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('w'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
             }
         };
         Self {
@@ -117,6 +145,10 @@ impl Atto {
                 match (key.code, key.modifiers) {
                     (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
                     (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_up => self.move_up(),
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_down => self.move_down(),
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_left => self.move_left(),
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_right => self.move_right(),
                     (KeyCode::Up, _) => self.move_up(),
                     (KeyCode::Down, _) => self.move_down(),
                     (KeyCode::Left, _) => self.move_left(),
@@ -333,15 +365,20 @@ fn main() -> io::Result<()> {
         Some(args[1].clone())
     };
 
-    
     let lua = Lua::new();
-    let config_path = if Path::new("config.lua").exists() {
-        "config.lua"
-    } else if Path::new("atto.lua").exists() {
-        "atto.lua"
-    } else {
-        panic!("No configuration file found!");
-    };
+
+    let paths: Vec<&str> = vec![
+        r"C:\Program Files\atto",
+        "/etc/atto",
+        "/usr/local/etc/atto",
+        "/usr/share/config/atto",
+        ".config/atto",
+        "/Library/Application Support/atto",
+        "/Users/YourUsername/Library/Application Support/atto",
+    ];
+
+    // Search for config file in specified paths and current/parent directories
+    let config_path = find_config_file(&paths)?;
 
     let preset: String = lua.context(|lua_ctx| {
         let config: Table = lua_ctx.load(&std::fs::read_to_string(config_path).unwrap()).eval().unwrap();
@@ -356,4 +393,44 @@ fn main() -> io::Result<()> {
     atto.run(&mut terminal)?;
     atto.write_file()?;
     Ok(())
+}
+
+fn find_config_file(paths: &[&str]) -> io::Result<String> {
+    let config_file_names = ["config.lua", "atto.lua"];
+
+    for config_file_name in config_file_names {
+        // Check in specified paths
+        for path in paths {
+            let config_path = Path::new(path).join(config_file_name);
+            if config_path.exists() {
+                return Ok(config_path.to_str().unwrap().to_string());
+            }
+        }
+
+        // Check in current and parent directories
+        let config_path = find_config_in_current_and_parent(config_file_name)?;
+        if !config_path.is_empty() {
+            return Ok(config_path);
+        }
+    }
+
+    Err(io::Error::new(io::ErrorKind::NotFound, "No configuration file found!"))
+}
+
+fn find_config_in_current_and_parent(filename: &str) -> io::Result<String> {
+    let current_dir_path = Path::new(filename);
+    if current_dir_path.exists() {
+        return Ok(current_dir_path.to_str().unwrap().to_string());
+    }
+
+    let mut current_dir = env::current_dir().unwrap();
+    while current_dir.exists() {
+        let config_path = current_dir.join(filename);
+        if config_path.exists() {
+            return Ok(config_path.to_str().unwrap().to_string());
+        }
+        current_dir.pop();
+    }
+
+    Ok(String::new())
 }
