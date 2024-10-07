@@ -1,3 +1,4 @@
+use std::fs;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseEvent, MouseEventKind},
     execute,
@@ -367,20 +368,18 @@ fn main() -> io::Result<()> {
 
     let lua = Lua::new();
 
-    let paths: Vec<&str> = vec![
-        r"C:\Program Files\atto",
-        "/etc/atto",
-        "/usr/local/etc/atto",
-        "/usr/share/config/atto",
-        ".config/atto",
-        "/Library/Application Support/atto",
-        "/Users/YourUsername/Library/Application Support/atto",
+    let mut paths: Vec<String> = vec![
+        dirs::config_dir().unwrap().to_str().unwrap().to_string(),
     ];
+
+    if let Ok(env_path) = env::var("ATTO_CONFIG_PATH") {
+        paths.push(env_path);
+    }
 
     let config_path = find_config_file(&paths)?;
 
     let preset: String = lua.context(|lua_ctx| {
-        let config: Table = lua_ctx.load(&std::fs::read_to_string(config_path).unwrap()).eval().unwrap();
+        let config: Table = lua_ctx.load(&fs::read_to_string(config_path).unwrap()).eval().unwrap();
         config.get("key_binding_preset").unwrap()
     });
 
@@ -394,8 +393,8 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn find_config_file(paths: &[&str]) -> io::Result<String> {
-    let config_file_names = ["config.lua", "atto.lua"];
+fn find_config_file(paths: &[String]) -> io::Result<String> {
+    let config_file_names = ["config.lua"];
 
     for config_file_name in config_file_names {
         for path in paths {
@@ -430,4 +429,18 @@ fn find_config_in_current_and_parent(filename: &str) -> io::Result<String> {
     }
 
     Ok(String::new())
+}
+
+fn create_default_config(config_path: &str) -> io::Result<()> {
+    let default_content = r#"
+-- Default configuration for Atto
+return {
+    key_binding_preset = "atto" -- Options: "nano", "micro", "atto"
+}
+"#;
+
+    let mut file = File::create(config_path)?;
+    file.write_all(default_content.as_bytes())?;
+    println!("Created default config file at: {}", config_path);
+    Ok(())
 }
