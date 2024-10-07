@@ -1,4 +1,9 @@
-# Atto!
+```     ___   __  __      
+   /   | / /_/ /_____ 
+  / /| |/ __/ __/ __ \
+ / ___ / /_/ /_/ /_/ /
+/_/  |_\__/\__/\____/ 
+                      ```
 
 ### HELP WANTED!:
 i need someone to create a logo for atto
