@@ -377,7 +377,6 @@ fn main() -> io::Result<()> {
         "/Users/YourUsername/Library/Application Support/atto",
     ];
 
-    // Search for config file in specified paths and current/parent directories
     let config_path = find_config_file(&paths)?;
 
     let preset: String = lua.context(|lua_ctx| {
@@ -399,7 +398,6 @@ fn find_config_file(paths: &[&str]) -> io::Result<String> {
     let config_file_names = ["config.lua", "atto.lua"];
 
     for config_file_name in config_file_names {
-        // Check in specified paths
         for path in paths {
             let config_path = Path::new(path).join(config_file_name);
             if config_path.exists() {
@@ -407,7 +405,6 @@ fn find_config_file(paths: &[&str]) -> io::Result<String> {
             }
         }
 
-        // Check in current and parent directories
         let config_path = find_config_in_current_and_parent(config_file_name)?;
         if !config_path.is_empty() {
             return Ok(config_path);
