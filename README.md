@@ -1,6 +1,11 @@
-# Atto!
-
-
+```
+       __  __                               _                __       __
+ ___ _/ /_/ /____    _____ __ ___  ___ ____(_)_ _  ___ ___  / /____ _/ /
+/ _ `/ __/ __/ _ \  / -_) \ // _ \/ -_) __/ /  ' \/ -_) _ \/ __/ _ `/ / 
+\_,_/\__/\__/\___/  \__/_\_\/ .__/\__/_/ /_/_/_/_/\__/_//_/\__/\_,_/_/  
+                           /_/
+```
+                  
 this is atto experimental, a branch of atto where experimental features will be added in and tested to see if its usable, DO NOT INSTALL THIS BRANCH, install main only 
 
 
