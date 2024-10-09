@@ -4,10 +4,6 @@
 this is atto experimental, a branch of atto where experimental features will be added in and tested to see if its usable, DO NOT INSTALL THIS BRANCH, install main only 
 
 
-## Bugs I am aware of:
-
-none
-
 
 ### Deps:
 
