@@ -368,18 +368,27 @@ fn main() -> io::Result<()> {
 
     let lua = Lua::new();
 
-    let mut paths: Vec<String> = vec![
-        dirs::config_dir().unwrap().to_str().unwrap().to_string(),
-    ];
+    
+    let atto_conf = dirs::config_dir()
+        .map(|config_dir| config_dir.join("atto"))
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
-    if let Ok(env_path) = env::var("ATTO_CONFIG_PATH") {
-        paths.push(env_path);
+    if !atto_conf.exists() {
+        std::fs::create_dir_all(&atto_conf)?;
     }
 
-    let config_path = find_config_file(&paths)?;
+    let config_path = atto_conf.join("config.lua");
+
+    
+    if !config_path.exists() {
+        let config_path_str = config_path.to_str().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 sequence in config path")
+        })?;
+        create_default_config(config_path_str)?;
+    }
 
     let preset: String = lua.context(|lua_ctx| {
-        let config: Table = lua_ctx.load(&fs::read_to_string(config_path).unwrap()).eval().unwrap();
+        let config: Table = lua_ctx.load(&fs::read_to_string(&config_path).unwrap()).eval().unwrap();
         config.get("key_binding_preset").unwrap()
     });
 
@@ -391,44 +400,6 @@ fn main() -> io::Result<()> {
     atto.run(&mut terminal)?;
     atto.write_file()?;
     Ok(())
-}
-
-fn find_config_file(paths: &[String]) -> io::Result<String> {
-    let config_file_names = ["config.lua"];
-
-    for config_file_name in config_file_names {
-        for path in paths {
-            let config_path = Path::new(path).join(config_file_name);
-            if config_path.exists() {
-                return Ok(config_path.to_str().unwrap().to_string());
-            }
-        }
-
-        let config_path = find_config_in_current_and_parent(config_file_name)?;
-        if !config_path.is_empty() {
-            return Ok(config_path);
-        }
-    }
-
-    Err(io::Error::new(io::ErrorKind::NotFound, "No configuration file found!"))
-}
-
-fn find_config_in_current_and_parent(filename: &str) -> io::Result<String> {
-    let current_dir_path = Path::new(filename);
-    if current_dir_path.exists() {
-        return Ok(current_dir_path.to_str().unwrap().to_string());
-    }
-
-    let mut current_dir = env::current_dir().unwrap();
-    while current_dir.exists() {
-        let config_path = current_dir.join(filename);
-        if config_path.exists() {
-            return Ok(config_path.to_str().unwrap().to_string());
-        }
-        current_dir.pop();
-    }
-
-    Ok(String::new())
 }
 
 fn create_default_config(config_path: &str) -> io::Result<()> {
