@@ -30,7 +30,7 @@ pick your binds in the lua config, atto will make one on first start in a common
 
 pick between Atto, Nano, Micro and emacs*
 
-* pseudo emacs (thats something to fix for 0.3.0)
+*pseudo emacs (thats something to fix for 0.3.0)
 
 ### Next steps:
 
