@@ -13,11 +13,6 @@ i need someone to create a logo for atto
 this is atto, a new code editor similar to nano,vim and emacs that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
 
 
-## Bugs I am aware of:
-
-none
-
-
 ### Deps:
 
   - rust 
@@ -27,19 +22,15 @@ none
 
 ### Notes:
 
-currently its in very early stages, this is version 0.0.3 so be sure to know that there is bugs 
+currently its in very early stages, this is version 0.2.0 so be sure to know that there is bugs 
 
 ### Binds:
 
-`ESC` -> to see binds
+pick your binds in the lua config, atto will make one on first start in a common place if it doesnt exist
 
-`CTRL + Q` -> exit
+pick between Atto, Nano, Micro and emacs*
 
-`arrows` -> move cursor
-
-`CTRL + W` -> save file
-
-`CTRL + R` -> reload file
+* pseudo emacs (thats something to fix for 0.3.0)
 
 ### Next steps:
 
@@ -72,8 +63,6 @@ So after some people used it, here is a list of a few things that people seeming
 
 `./atto`
 
-and boom you got atto compiled
-
-also atto does not have the capability to create files, please use `touch`  
+and boom you got atto compiled 
 
 if you wanna insall, instead of `cargo build` do `cargo install --path <path>`
