@@ -1,3 +1,4 @@
+use std::fs;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseEvent, MouseEventKind},
     execute,
@@ -15,6 +16,19 @@ use tui::{
     widgets::{Block, Borders, Paragraph},
     Terminal,
 };
+use rlua::{Lua, RluaCompat, Table};
+use std::path::Path;
+use crossterm::event::{KeyEvent, KeyModifiers};
+use crossterm::event::Event::Key;
+
+struct KeyBindings {
+    save: (KeyCode, KeyModifiers),
+    quit: (KeyCode, KeyModifiers),
+    move_up: (KeyCode, KeyModifiers),
+    move_down: (KeyCode, KeyModifiers),
+    move_left: (KeyCode, KeyModifiers),
+    move_right: (KeyCode, KeyModifiers),
+}
 
 struct Atto {
     cursor_x: usize,
@@ -28,11 +42,55 @@ struct Atto {
     show_binds: bool,
     scroll_offset: usize,
     horizontal_scroll_offset: usize,
+    key_bindings: KeyBindings,
+
 }
 
 impl Atto {
-    fn new(filename: Option<String>) -> Self {
+    fn new(filename: Option<String>, preset: &str) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
+        let key_bindings = match preset {
+            "atto" => KeyBindings {
+                save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+            },
+            "nano" => KeyBindings {
+                save: (KeyCode::Char('o'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('x'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+            },
+            "micro" => KeyBindings {
+                save: (KeyCode::Char('s'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+            },
+            "emacs" => KeyBindings {
+                save: (KeyCode::Char('x'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('c'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('p'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('n'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('b'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('f'), KeyModifiers::CONTROL),
+            },
+            _ => KeyBindings {
+                save: (KeyCode::Char('t'), KeyModifiers::CONTROL),
+                quit: (KeyCode::Char('w'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
+                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
+                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
+                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+            }
+        };
         Self {
             cursor_y: 0,
             cursor_x: 0,
@@ -45,6 +103,7 @@ impl Atto {
             show_binds: false,
             scroll_offset: 0,
             horizontal_scroll_offset: 0,
+            key_bindings,
         }
     }
 
@@ -84,21 +143,25 @@ impl Atto {
             execute!(io::stdout(), MoveTo(self.cursor_x as u16 + self.cursor_offset_x, self.cursor_y as u16 - self.scroll_offset as u16 + self.cursor_offset_y), Show)?;
 
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => break,
-                    KeyCode::Up => self.move_up(),
-                    KeyCode::Down => self.move_down(),
-                    KeyCode::Left => self.move_left(),
-                    KeyCode::Right => self.move_right(),
-                    KeyCode::Char('w') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.write_file()?,
-                    KeyCode::Char('r') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => self.read_file()?,
-                    KeyCode::Esc => self.show_binds = !self.show_binds,
-                    KeyCode::Enter => self.new_line(),
-                    KeyCode::Char(v) => self.input_char(v),
-                    KeyCode::Backspace => self.backspace(),
-                    KeyCode::Tab => self.input_tab(),
-                    KeyCode::PageUp => self.page_up(),
-                    KeyCode::PageDown => self.page_down(),
+                match (key.code, key.modifiers) {
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_up => self.move_up(),
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_down => self.move_down(),
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_left => self.move_left(),
+                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_right => self.move_right(),
+                    (KeyCode::Up, _) => self.move_up(),
+                    (KeyCode::Down, _) => self.move_down(),
+                    (KeyCode::Left, _) => self.move_left(),
+                    (KeyCode::Right, _) => self.move_right(),
+                    (KeyCode::Char('r'), KeyModifiers::CONTROL) => self.read_file()?,
+                    (KeyCode::Esc, _) => self.show_binds = !self.show_binds,
+                    (KeyCode::Enter, _) => self.new_line(),
+                    (KeyCode::Char(v), _) => self.input_char(v),
+                    (KeyCode::Backspace, _) => self.backspace(),
+                    (KeyCode::Tab, _) => self.input_tab(),
+                    (KeyCode::PageUp, _) => self.page_up(),
+                    (KeyCode::PageDown, _) => self.page_down(),
                     _ => {}
                 }
             } else if let Event::Mouse(mouse_event) = event::read()? {
@@ -302,12 +365,59 @@ fn main() -> io::Result<()> {
     } else {
         Some(args[1].clone())
     };
-    let mut atto = Atto::new(filename);
+
+    if let Some(ref file) = filename {
+        if !Path::new(file).exists() {
+            let file_handle = File::create(file)?;
+        }
+    }
+
+    let lua = Lua::new();
+
+    
+    let atto_conf = dirs::config_dir()
+        .map(|config_dir| config_dir.join("atto"))
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
+
+    if !atto_conf.exists() {
+        std::fs::create_dir_all(&atto_conf)?;
+    }
+
+    let config_path = atto_conf.join("config.lua");
+
+    
+    if !config_path.exists() {
+        let config_path_str = config_path.to_str().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 sequence in config path")
+        })?;
+        create_default_config(config_path_str)?;
+    }
+
+    let preset: String = lua.context(|lua_ctx| {
+        let config: Table = lua_ctx.load(&fs::read_to_string(&config_path).unwrap()).eval().unwrap();
+        config.get("key_binding_preset").unwrap()
+    });
+
+    let mut atto = Atto::new(filename, &preset);
     atto.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     atto.run(&mut terminal)?;
     atto.write_file()?;
+    Ok(())
+}
+
+fn create_default_config(config_path: &str) -> io::Result<()> {
+    let default_content = r#"
+-- Default configuration for Atto
+return {
+    key_binding_preset = "atto" -- Options: "nano", "micro", "atto"
+}
+"#;
+
+    let mut file = File::create(config_path)?;
+    file.write_all(default_content.as_bytes())?;
+    println!("Created default config file at: {}", config_path);
     Ok(())
 }
