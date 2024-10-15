@@ -1,4 +1,3 @@
-#!/bin/bash
 target=target/release/atto
 bin=/usr/bin
 
