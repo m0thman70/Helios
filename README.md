@@ -46,4 +46,6 @@ So after some people used it, here is a list of a few things that people seeming
 
 `cd Atto`
 
+`chmod +x install.sh`
+
 `sudo ./install.sh`
