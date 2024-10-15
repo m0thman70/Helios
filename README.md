@@ -38,31 +38,12 @@ So after some people used it, here is a list of a few things that people seeming
 
 - syntax highlighting -> possibly tree sitter
 - commands -> no idea how
-- a few people adsked for modes but thats gonna be sidelined
+- a few people asked for modes but thats gonna be sidelined
 
 ### Install:
-
-```curl -fsSL https://raw.githubusercontent.com/m0thman70/Atto/main/install.sh | sh``` 
-
-
-> [!WARNING]
-> Does not update currently installed version.
-
-
-### Compile:
 
 `git clone https://github.com/m0thman70/Atto`
 
 `cd Atto`
 
-`cargo build --release`
-
-`cd target/release`
-
-`chmod +x atto`
-
-`./atto`
-
-and boom you got atto compiled 
-
-if you wanna insall, instead of `cargo build` do `cargo install --path <path>`
+`sudo ./install.sh`
