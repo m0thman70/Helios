@@ -368,15 +368,15 @@ fn main() -> io::Result<()> {
     let lua = Lua::new();
 
 
-    let atto_conf = dirs::config_dir()
+    let helios_conf = dirs::config_dir()
         .map(|config_dir| config_dir.join("helios"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
-    if !atto_conf.exists() {
-        std::fs::create_dir_all(&atto_conf)?;
+    if !_conf.exists() {
+        std::fs::create_dir_all(&helios_conf)?;
     }
 
-    let config_path = atto_conf.join("config.lua");
+    let config_path = helios_conf.join("config.lua");
 
 
     if !config_path.exists() {
