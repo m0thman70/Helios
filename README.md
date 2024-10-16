@@ -42,9 +42,9 @@ So after some people used it, here is a list of a few things that people seeming
 
 ### Install:
 
-`git clone https://github.com/m0thman70/Atto`
+`git clone https://github.com/m0thman70/Helios`
 
-`cd Atto`
+`cd Helios`
 
 `chmod +x install.sh`
 
