@@ -372,7 +372,7 @@ fn main() -> io::Result<()> {
         .map(|config_dir| config_dir.join("helios"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
-    if !_conf.exists() {
+    if !helios_conf.exists() {
         std::fs::create_dir_all(&helios_conf)?;
     }
 
