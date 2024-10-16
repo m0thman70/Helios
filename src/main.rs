@@ -1,12 +1,13 @@
 use std::fs;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseEvent, MouseEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, MouseEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    cursor::{MoveTo, Show, Hide},
+    cursor::{MoveTo, Show},
 };
 use std::io::{self, Read, Write};
 use std::env;
+use std::fmt::Alignment::Right;
 use std::fs::{File, OpenOptions};
 use tui::{
     backend::{Backend, CrosstermBackend},
@@ -18,8 +19,10 @@ use tui::{
 };
 use rlua::{Lua, RluaCompat, Table};
 use std::path::Path;
-use crossterm::event::{KeyEvent, KeyModifiers};
-use crossterm::event::Event::Key;
+use crossterm::event::{KeyModifiers};
+
+
+
 
 struct KeyBindings {
     save: (KeyCode, KeyModifiers),
@@ -43,7 +46,6 @@ struct Atto {
     scroll_offset: usize,
     horizontal_scroll_offset: usize,
     key_bindings: KeyBindings,
-
 }
 
 impl Atto {
@@ -53,26 +55,26 @@ impl Atto {
             "atto" => KeyBindings {
                 save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
-                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
-                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
-                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
-                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Up, KeyModifiers::NONE),
+                move_down: (KeyCode::Down, KeyModifiers::NONE),
+                move_left: (KeyCode::Left, KeyModifiers::NONE),
+                move_right: (KeyCode::Right, KeyModifiers::NONE),
             },
             "nano" => KeyBindings {
                 save: (KeyCode::Char('o'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('x'), KeyModifiers::CONTROL),
-                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
-                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
-                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
-                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Up, KeyModifiers::NONE),
+                move_down: (KeyCode::Down, KeyModifiers::NONE),
+                move_left: (KeyCode::Left, KeyModifiers::NONE),
+                move_right: (KeyCode::Right, KeyModifiers::NONE),
             },
             "micro" => KeyBindings {
                 save: (KeyCode::Char('s'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
-                move_up: (KeyCode::Char('k'), KeyModifiers::CONTROL),
-                move_down: (KeyCode::Char('j'), KeyModifiers::CONTROL),
-                move_left: (KeyCode::Char('h'), KeyModifiers::CONTROL),
-                move_right: (KeyCode::Char('l'), KeyModifiers::CONTROL),
+                move_up: (KeyCode::Up, KeyModifiers::NONE),
+                move_down: (KeyCode::Down, KeyModifiers::NONE),
+                move_left: (KeyCode::Left, KeyModifiers::NONE),
+                move_right: (KeyCode::Right, KeyModifiers::NONE),
             },
             "emacs" => KeyBindings {
                 save: (KeyCode::Char('x'), KeyModifiers::CONTROL),
@@ -94,7 +96,7 @@ impl Atto {
         Self {
             cursor_y: 0,
             cursor_x: 0,
-            cursor_offset_x: 6,
+            cursor_offset_x: 5,
             cursor_offset_y: 1,
             buffer: vec![String::new()],
             terminal_height: height as usize,
@@ -221,7 +223,7 @@ impl Atto {
 
     fn render<B: Backend>(&self, f: &mut tui::Frame<B>) {
         let size = f.size();
-        let block = Block::default().borders(Borders::ALL).title("Atto");
+        let block = Block::default().borders(Borders::NONE).title("Atto");
 
         let paragraph = Paragraph::new(
             self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
@@ -237,31 +239,22 @@ impl Atto {
         ).block(block);
 
         f.render_widget(paragraph, size);
+        self.render_status_bar(f, size);
 
-        if self.show_binds {
-            let popup_block = Block::default().borders(Borders::ALL).title("Keybindings");
-            let popup_area = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-                .split(size)[1];
+    }
 
-            let hints = vec![
-                KeyBindingHint::new("Ctrl-Q", "Quit"),
-                KeyBindingHint::new("Ctrl-W", "Save"),
-                KeyBindingHint::new("Ctrl-R", "Reload"),
-            ];
+    fn render_status_bar<B: Backend>(&self, f: &mut tui::Frame<B>, size: tui::layout::Rect) {
+        let status_bar_height = 1;
+        let status_bar_area = tui::layout::Rect::new(0, size.height - status_bar_height, size.width, status_bar_height);
 
-            let hint_lines: Vec<Spans> = hints.iter().map(|hint| {
-                Spans::from(vec![
-                    Span::styled(&hint.key, Style::default().fg(Color::Yellow)),
-                    Span::raw(" - "),
-                    Span::raw(&hint.description),
-                ])
-            }).collect();
+        let cursor_position = format!("Line: {}, Col: {}", self.cursor_y + 1, self.cursor_x + 1);
+        let filename = self.filename.as_ref().map_or("Untitled".to_string(), |f| f.clone());
+        let status_text = format!(" {} | {}", filename, cursor_position);
 
-            let hint_paragraph = Paragraph::new(hint_lines).block(popup_block);
-            f.render_widget(hint_paragraph, popup_area);
-        }
+        let status_bar = Paragraph::new(status_text)
+            .block(Block::default().borders(Borders::NONE));
+
+        f.render_widget(status_bar, status_bar_area);
     }
 
 
@@ -374,7 +367,7 @@ fn main() -> io::Result<()> {
 
     let lua = Lua::new();
 
-    
+
     let atto_conf = dirs::config_dir()
         .map(|config_dir| config_dir.join("atto"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
@@ -385,7 +378,7 @@ fn main() -> io::Result<()> {
 
     let config_path = atto_conf.join("config.lua");
 
-    
+
     if !config_path.exists() {
         let config_path_str = config_path.to_str().ok_or_else(|| {
             io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 sequence in config path")
@@ -397,6 +390,7 @@ fn main() -> io::Result<()> {
         let config: Table = lua_ctx.load(&fs::read_to_string(&config_path).unwrap()).eval().unwrap();
         config.get("key_binding_preset").unwrap()
     });
+
 
     let mut atto = Atto::new(filename, &preset);
     atto.read_file()?;
