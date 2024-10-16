@@ -8,7 +8,7 @@
 ```
 
 ### HELP WANTED!:
-i need someone to create a logo for atto
+i need someone to create a logo for Helios
 
 this is atto, a new code editor similar to nano,vim and emacs that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
 
@@ -28,7 +28,7 @@ currently its in very early stages, this is version 0.2.0 so be sure to know tha
 
 pick your binds in the lua config, atto will make one on first start in a common place if it doesnt exist
 
-pick between Atto, Nano, Micro and emacs*
+pick between Helios, Nano, Micro and emacs*
 
 *pseudo emacs (thats something to fix for 0.3.0)
 
