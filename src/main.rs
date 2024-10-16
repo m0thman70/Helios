@@ -47,10 +47,11 @@ struct Atto {
     key_bindings: KeyBindings,
     command_mode: bool,
     command_input: String,
+    vim_mode: bool,
 }
 
 impl Atto {
-    fn new(filename: Option<String>, preset: &str) -> Self {
+    fn new(filename: Option<String>, preset: &str, vim_mode: bool) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let key_bindings = match preset {
             "atto" => KeyBindings {
@@ -109,6 +110,7 @@ impl Atto {
             key_bindings,
             command_input: String::new(),
             command_mode: false,
+            vim_mode,
         }
     }
 
@@ -148,51 +150,60 @@ impl Atto {
             execute!(io::stdout(), MoveTo(self.cursor_x as u16 + self.cursor_offset_x, self.cursor_y as u16 - self.scroll_offset as u16 + self.cursor_offset_y), Show)?;
 
             if let Event::Key(key) = event::read()? {
-                match (key.code, key.modifiers) {
-                    (KeyCode::Char(':'), _) => {
-                        self.toggle_command_mode();
-                    },
-                    (KeyCode::Enter, _) => {
-                        if self.command_mode {
-                            self.execute_command();
-                        } else {
-                            self.new_line();
-                        }
-                    },
-                    (KeyCode::Backspace, _) => {
-                        if self.command_mode {
-                            self.command_input.pop();
-                        } else {
-                            self.backspace();
-                        }
-                    },
-                    (KeyCode::Esc, _) => {
-                        if self.command_mode {
+                if self.vim_mode == true {
+                    match (key.code, key.modifiers) {
+                        (KeyCode::Char(':'), _) => {
                             self.toggle_command_mode();
-                        }
-                    },
-                    (KeyCode::Char(c), _) => {
-                        if self.command_mode {
-                            self.handle_command_input(c);
-                        } else {
-                            self.input_char(c);
-                        }
-                    },
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_up => self.move_up(),
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_down => self.move_down(),
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_left => self.move_left(),
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_right => self.move_right(),
-                    (KeyCode::Up, _) => self.move_up(),
-                    (KeyCode::Down, _) => self.move_down(),
-                    (KeyCode::Left, _) => self.move_left(),
-                    (KeyCode::Right, _) => self.move_right(),
-                    (KeyCode::Char('r'), KeyModifiers::CONTROL) => self.read_file()?,
-                    (KeyCode::Tab, _) => self.input_tab(),
-                    (KeyCode::PageUp, _) => self.page_up(),
-                    (KeyCode::PageDown, _) => self.page_down(),
-                    _ => {}
+                        },
+                        (KeyCode::Enter, _) => {
+                            if self.command_mode {
+                                self.execute_command();
+                            } else {
+                                self.new_line();
+                            }
+                        },
+                        (KeyCode::Backspace, _) => {
+                            if self.command_mode {
+                                self.command_input.pop();
+                            } else {
+                                self.backspace();
+                            }
+                        },
+                        (KeyCode::Esc, _) => {
+                            if self.command_mode {
+                                self.toggle_command_mode();
+                            }
+                        },
+                        (KeyCode::Char(v), _) => {
+                            if self.command_mode {
+                                self.handle_command_input(v);
+                            } else {
+                                self.input_char(v);
+                            }
+                        },
+                        _ => {}
+                    }
+                } else {
+                    match (key.code, key.modifiers) {
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_up => self.move_up(),
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_down => self.move_down(),
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_left => self.move_left(),
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_right => self.move_right(),
+                        (KeyCode::Up, _) => self.move_up(),
+                        (KeyCode::Down, _) => self.move_down(),
+                        (KeyCode::Left, _) => self.move_left(),
+                        (KeyCode::Right, _) => self.move_right(),
+                        (KeyCode::Char('r'), KeyModifiers::CONTROL) => self.read_file()?,
+                        (KeyCode::Tab, _) => self.input_tab(),
+                        (KeyCode::PageUp, _) => self.page_up(),
+                        (KeyCode::PageDown, _) => self.page_down(),
+                        (KeyCode::Backspace, _) => self.backspace(),
+                        (KeyCode::Enter, _) => self.new_line(),
+                        (KeyCode::Char(v), _) => self.input_char(v),
+                        _ => {}
+                    }
                 }
             } else if let Event::Mouse(mouse_event) = event::read()? {
                 match mouse_event.kind {
@@ -452,7 +463,7 @@ fn main() -> io::Result<()> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
     if !atto_conf.exists() {
-        std::fs::create_dir_all(&atto_conf)?;
+        fs::create_dir_all(&atto_conf)?;
     }
 
     let config_path = atto_conf.join("config.lua");
@@ -470,8 +481,13 @@ fn main() -> io::Result<()> {
         config.get("key_binding_preset").unwrap()
     });
 
+    let vim_mode: bool = lua.context(|lua_ctx| {
+        let config: Table = lua_ctx.load(&fs::read_to_string(&config_path).unwrap()).eval().unwrap();
+        config.get("vim_mode").unwrap()
+    });
 
-    let mut atto = Atto::new(filename, &preset);
+
+    let mut atto = Atto::new(filename, &preset, vim_mode);
     atto.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
@@ -485,8 +501,8 @@ fn create_default_config(config_path: &str) -> io::Result<()> {
     let default_content = r#"
 -- Default configuration for Atto
 return {
-    key_binding_preset = "atto" -- Options: "nano", "micro", "atto"
-
+    key_binding_preset = "atto", -- Options: "nano", "micro", "atto"
+    vim_mode = false,
 }
 "#;
 
