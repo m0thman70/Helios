@@ -33,7 +33,7 @@ struct KeyBindings {
     move_right: (KeyCode, KeyModifiers),
 }
 
-struct Atto {
+struct Helios {
     cursor_x: usize,
     cursor_y: usize,
     cursor_offset_x: u16,
@@ -48,11 +48,11 @@ struct Atto {
     key_bindings: KeyBindings,
 }
 
-impl Atto {
+impl Helios {
     fn new(filename: Option<String>, preset: &str) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let key_bindings = match preset {
-            "atto" => KeyBindings {
+            "helios" => KeyBindings {
                 save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
                 move_up: (KeyCode::Up, KeyModifiers::NONE),
@@ -223,7 +223,7 @@ impl Atto {
 
     fn render<B: Backend>(&self, f: &mut tui::Frame<B>) {
         let size = f.size();
-        let block = Block::default().borders(Borders::NONE).title("Atto");
+        let block = Block::default().borders(Borders::NONE).title("Helios");
 
         let paragraph = Paragraph::new(
             self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
@@ -369,7 +369,7 @@ fn main() -> io::Result<()> {
 
 
     let atto_conf = dirs::config_dir()
-        .map(|config_dir| config_dir.join("atto"))
+        .map(|config_dir| config_dir.join("helios"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
     if !atto_conf.exists() {
@@ -392,21 +392,21 @@ fn main() -> io::Result<()> {
     });
 
 
-    let mut atto = Atto::new(filename, &preset);
-    atto.read_file()?;
+    let mut helios = Helios::new(filename, &preset);
+    helios.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    atto.run(&mut terminal)?;
-    atto.write_file()?;
+    helios.run(&mut terminal)?;
+    helios.write_file()?;
     Ok(())
 }
 
 fn create_default_config(config_path: &str) -> io::Result<()> {
     let default_content = r#"
--- Default configuration for Atto
+-- Default configuration for helios
 return {
-    key_binding_preset = "atto" -- Options: "nano", "micro", "atto"
+    key_binding_preset = "helios" -- Options: "nano", "micro", "helios"
 }
 "#;
 
