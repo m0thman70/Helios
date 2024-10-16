@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "atto"
+name = "helios"
 version = "0.2.0"
 dependencies = [
  "cc",
