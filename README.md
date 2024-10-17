@@ -26,7 +26,7 @@ currently its in very early stages, this is version 0.2.0 so be sure to know tha
 
 ### Binds:
 
-pick your binds in the lua config, atto will make one on first start in a common place if it doesnt exist
+pick your binds in the lua config, alkaline will make one on first start in a common place if it doesnt exist
 
 pick between Alkaline, Nano, Micro and emacs*
 
