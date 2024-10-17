@@ -8,9 +8,9 @@
 ```
 
 ### HELP WANTED!:
-i need someone to create a logo for Helios
+i need someone to create a logo for Alkaline
 
-this is Helios, a new code editor similar to nano,vim and emacs that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
+this is Alkaline, a new code editor similar to nano,vim and emacs that came to existance with alot of AI and ALOT of Bullsh** but here we are, it uses crossterm and tui libraries
 
 
 ### Deps:
@@ -28,7 +28,7 @@ currently its in very early stages, this is version 0.2.0 so be sure to know tha
 
 pick your binds in the lua config, atto will make one on first start in a common place if it doesnt exist
 
-pick between Helios, Nano, Micro and emacs*
+pick between Alkaline, Nano, Micro and emacs*
 
 *pseudo emacs (thats something to fix for 0.3.0)
 
@@ -42,9 +42,9 @@ So after some people used it, here is a list of a few things that people seeming
 
 ### Install:
 
-`git clone https://github.com/m0thman70/Helios`
+`git clone https://github.com/m0thman70/Alkaline`
 
-`cd Helios`
+`cd Alkaline`
 
 `chmod +x install.sh`
 
