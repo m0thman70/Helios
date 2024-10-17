@@ -33,7 +33,7 @@ struct KeyBindings {
     move_right: (KeyCode, KeyModifiers),
 }
 
-struct Helios {
+struct Alkaline {
     cursor_x: usize,
     cursor_y: usize,
     cursor_offset_x: u16,
@@ -48,11 +48,11 @@ struct Helios {
     key_bindings: KeyBindings,
 }
 
-impl Helios {
+impl Alkaline {
     fn new(filename: Option<String>, preset: &str) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let key_bindings = match preset {
-            "helios" => KeyBindings {
+            "alkaline" => KeyBindings {
                 save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
                 move_up: (KeyCode::Up, KeyModifiers::NONE),
@@ -223,7 +223,7 @@ impl Helios {
 
     fn render<B: Backend>(&self, f: &mut tui::Frame<B>) {
         let size = f.size();
-        let block = Block::default().borders(Borders::NONE).title("Helios");
+        let block = Block::default().borders(Borders::NONE).title("Alkaline");
 
         let paragraph = Paragraph::new(
             self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
@@ -368,15 +368,15 @@ fn main() -> io::Result<()> {
     let lua = Lua::new();
 
 
-    let helios_conf = dirs::config_dir()
-        .map(|config_dir| config_dir.join("helios"))
+    let alkaline_conf = dirs::config_dir()
+        .map(|config_dir| config_dir.join("alkaline"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
-    if !helios_conf.exists() {
-        std::fs::create_dir_all(&helios_conf)?;
+    if !alkaline_conf.exists() {
+        std::fs::create_dir_all(&alkaline_conf)?;
     }
 
-    let config_path = helios_conf.join("config.lua");
+    let config_path = alkaline_conf.join("config.lua");
 
 
     if !config_path.exists() {
@@ -392,21 +392,21 @@ fn main() -> io::Result<()> {
     });
 
 
-    let mut helios = Helios::new(filename, &preset);
-    helios.read_file()?;
+    let mut alkaline = Alkaline::new(filename, &preset);
+    alkaline.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    helios.run(&mut terminal)?;
-    helios.write_file()?;
+    alkaline.run(&mut terminal)?;
+    alkaline.write_file()?;
     Ok(())
 }
 
 fn create_default_config(config_path: &str) -> io::Result<()> {
     let default_content = r#"
--- Default configuration for helios
+-- Default configuration for alkaline
 return {
-    key_binding_preset = "helios" -- Options: "nano", "micro", "helios"
+    key_binding_preset = "alkaline" -- Options: "nano", "micro", "alkaline"
 }
 "#;
 
