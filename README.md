@@ -5,15 +5,11 @@
 > [!NOTE]  
 > If you do not have rust currently please install the rust toolchain. It can be found at crates.io @ the install cargo button.
 
-### Notes:
-
-currently its in very early stages, this is version 0.2.0 so be sure to know that there is bugs 
-
 ### Binds:
 
 pick your binds in the lua config, alkaline will make one on first start in a common place if it doesnt exist
 
-pick between Alkaline, Nano, Micro and emacs*
+pick between Atto, Nano, Micro and emacs*
 
 *pseudo emacs (thats something to fix for 0.3.0)
 
@@ -27,9 +23,9 @@ So after some people used it, here is a list of a few things that people seeming
 
 ### Install:
 
-`git clone https://github.com/m0thman70/Alkaline`
+`git clone https://github.com/m0thman70/Atto-Editor`
 
-`cd Alkaline`
+`cd Atto-Editor`
 
 `chmod +x install.sh`
 
