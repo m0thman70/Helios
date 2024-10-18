@@ -18,9 +18,12 @@ use tui::{
 use rlua::{Lua, RluaCompat, Table};
 use std::path::Path;
 use std::process::Command;
-use crossterm::event::{KeyModifiers};
+use crossterm::event::{KeyEvent, KeyModifiers};
 
-
+enum Mode {
+    Normal,
+    Insert,
+}
 
 
 struct KeyBindings {
@@ -48,10 +51,13 @@ struct Atto {
     command_mode: bool,
     command_input: String,
     vim_mode: bool,
+    command_style: String,
+    mode: Mode,
+    selection_start: Option<(usize, usize)>,
 }
 
 impl Atto {
-    fn new(filename: Option<String>, preset: &str, vim_mode: bool) -> Self {
+    fn new(filename: Option<String>, preset: &str, vim_mode: bool, command_style: &str) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let key_bindings = match preset {
             "atto" => KeyBindings {
@@ -111,6 +117,9 @@ impl Atto {
             command_input: String::new(),
             command_mode: false,
             vim_mode,
+            command_style: command_style.to_string(),
+            mode: Mode::Normal,
+            selection_start: None,
         }
     }
 
@@ -151,7 +160,12 @@ impl Atto {
 
             if let Event::Key(key) = event::read()? {
                 if self.vim_mode == true {
+                    match self.mode {
+                        Mode::Normal => self.handle_normal_mode(key),
+                        Mode::Insert => self.handle_insert_mode(key),
+                    }
                     match (key.code, key.modifiers) {
+
                         (KeyCode::Enter, _) => {
                             if self.command_mode {
                                 self.execute_command();
@@ -172,11 +186,7 @@ impl Atto {
                             }
                         },
                         (KeyCode::Char(v), _) => {
-                            if self.command_mode {
-                                self.handle_command_input(v);
-                            } else {
-                                self.input_char(v);
-                            }
+                            self.handle_command_input(v);
                         },
                         (KeyCode::Up, _) => self.move_up(),
                         (KeyCode::Down, _) => self.move_down(),
@@ -220,6 +230,34 @@ impl Atto {
         Ok(())
     }
 
+    fn handle_normal_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('i') => self.mode = Mode::Insert,
+            KeyCode::Char(':') => self.command_mode = true,
+            KeyCode::Up => self.move_up(),
+            KeyCode::Down => self.move_down(),
+            KeyCode::Left => self.move_left(),
+            KeyCode::Right => self.move_right(),
+            KeyCode::Char('h') => self.move_left(),
+            KeyCode::Char('j') => self.move_down(),
+            KeyCode::Char('k') => self.move_up(),
+            KeyCode::Char('l') => self.move_right(),
+            _ => {}
+        }
+    }
+
+    fn handle_insert_mode(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => self.mode = Mode::Normal, // Return to Normal mode
+            KeyCode::Backspace => self.backspace(),
+            KeyCode::Char(c) => self.input_char(c),
+            _ => {}
+        }
+    }
+
+
+
+
     fn toggle_command_mode(&mut self) {
         self.command_mode = !self.command_mode; // Toggle command mode
         if !self.command_mode {
@@ -239,28 +277,52 @@ impl Atto {
 
 
     fn execute_command(&mut self) {
-        match self.command_input.trim() {
-            "q" => {
-                Atto::reset_terminal();
-                std::process::exit(0);
-
-            }
-            "w" => {
-                if let Err(e) = self.write_file() {
-                    eprintln!("Error writing file: {}", e);
+        if self.command_style == "kakoune" {
+            match self.command_input.trim() {
+                ":quit" => {
+                    Atto::reset_terminal();
+                    std::process::exit(0);
+                }
+                ":write" => {
+                    if let Err(e) = self.write_file() {
+                        eprintln!("Error writing file: {}", e);
+                    }
+                }
+                ":write-quit" => {
+                    if let Err(e) = self.write_file() {
+                        eprintln!("Error writing file: {}", e);
+                    }
+                    Atto::reset_terminal();
+                    std::process::exit(0);
+                }
+                _ => {
+                    println!("Kakoune Command not recognized: {}", self.command_input);
                 }
             }
-            "wq" => {
-                if let Err(e) = self.write_file() {
-                    eprintln!("Error writing file: {}", e);
+        } else {
+            match self.command_input.trim() {
+                ":q" => {
+                    Atto::reset_terminal();
+                    std::process::exit(0);
                 }
-                Atto::reset_terminal();
-                std::process::exit(0);
-            }
-            _ => {
-                println!("Command not recognized: {}", self.command_input);
+                ":w" => {
+                    if let Err(e) = self.write_file() {
+                        eprintln!("Error writing file: {}", e);
+                    }
+                }
+                ":wq" => {
+                    if let Err(e) = self.write_file() {
+                        eprintln!("Error writing file: {}", e);
+                    }
+                    Atto::reset_terminal();
+                    std::process::exit(0);
+                }
+                _ => {
+                    println!("Command not recognized: {}", self.command_input);
+                }
             }
         }
+
         self.command_input.clear();
         self.toggle_command_mode();
     }
@@ -327,6 +389,7 @@ impl Atto {
         f.render_widget(paragraph, size);
         self.render_status_bar(f, size);
 
+
     }
 
     fn render_status_bar<B: Backend>(&self, f: &mut tui::Frame<B>, size: tui::layout::Rect) {
@@ -335,11 +398,16 @@ impl Atto {
         let cursor_position = format!("Line: {}, Col: {}", self.cursor_y + 1, self.cursor_x + 1);
         let filename = self.filename.as_ref().map_or("Untitled".to_string(), |f| f.clone());
         let command_display = if self.command_mode {
-            format!(" :{}", self.command_input)
+            format!(" {}", self.command_input)
         } else {
             String::new()
         };
-        let status_text = format!(" {} | {}{}", filename, cursor_position, command_display);
+        let mode_display = match self.mode {
+            Mode::Normal => "NORMAL",
+            Mode::Insert => "INSERT",
+        };
+
+        let status_text = format!(" {} | {} | {} | {}", filename, cursor_position, mode_display, command_display);
 
         let status_bar = Paragraph::new(status_text)
             .block(Block::default().borders(Borders::NONE))
@@ -487,8 +555,13 @@ fn main() -> io::Result<()> {
         config.get("vim_mode").unwrap()
     });
 
+    let command_style: String = lua.context(|lua_ctx| {
+        let config: Table = lua_ctx.load(&fs::read_to_string(&config_path).unwrap()).eval().unwrap();
+        config.get("command_style").unwrap()
+    });
 
-    let mut atto = Atto::new(filename, &preset, vim_mode);
+
+    let mut atto = Atto::new(filename, &preset, vim_mode, &command_style);
     atto.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
@@ -504,6 +577,7 @@ fn create_default_config(config_path: &str) -> io::Result<()> {
 return {
     key_binding_preset = "atto", -- Options: "nano", "micro", "atto"
     vim_mode = false,
+    command_style = "vim", -- Options: "kakoune", "vim"
 }
 "#;
 
