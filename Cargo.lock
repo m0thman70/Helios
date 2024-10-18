@@ -12,8 +12,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "alkaline"
-version = "0.2.0"
+name = "atto"
+version = "0.1.1"
 dependencies = [
  "cc",
  "crossterm 0.23.2",

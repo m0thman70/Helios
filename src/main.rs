@@ -7,11 +7,9 @@ use crossterm::{
 };
 use std::io::{self, Read, Write};
 use std::env;
-use std::fmt::Alignment::Right;
 use std::fs::{File, OpenOptions};
 use tui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Span, Spans},
     widgets::{Block, Borders, Paragraph},
@@ -19,6 +17,7 @@ use tui::{
 };
 use rlua::{Lua, RluaCompat, Table};
 use std::path::Path;
+use std::process::Command;
 use crossterm::event::{KeyModifiers};
 
 
@@ -33,7 +32,7 @@ struct KeyBindings {
     move_right: (KeyCode, KeyModifiers),
 }
 
-struct Alkaline {
+struct Atto {
     cursor_x: usize,
     cursor_y: usize,
     cursor_offset_x: u16,
@@ -46,13 +45,16 @@ struct Alkaline {
     scroll_offset: usize,
     horizontal_scroll_offset: usize,
     key_bindings: KeyBindings,
+    command_mode: bool,
+    command_input: String,
+    vim_mode: bool,
 }
 
-impl Alkaline {
-    fn new(filename: Option<String>, preset: &str) -> Self {
+impl Atto {
+    fn new(filename: Option<String>, preset: &str, vim_mode: bool) -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         let key_bindings = match preset {
-            "alkaline" => KeyBindings {
+            "atto" => KeyBindings {
                 save: (KeyCode::Char('w'), KeyModifiers::CONTROL),
                 quit: (KeyCode::Char('q'), KeyModifiers::CONTROL),
                 move_up: (KeyCode::Up, KeyModifiers::NONE),
@@ -106,6 +108,9 @@ impl Alkaline {
             scroll_offset: 0,
             horizontal_scroll_offset: 0,
             key_bindings,
+            command_input: String::new(),
+            command_mode: false,
+            vim_mode,
         }
     }
 
@@ -145,26 +150,64 @@ impl Alkaline {
             execute!(io::stdout(), MoveTo(self.cursor_x as u16 + self.cursor_offset_x, self.cursor_y as u16 - self.scroll_offset as u16 + self.cursor_offset_y), Show)?;
 
             if let Event::Key(key) = event::read()? {
-                match (key.code, key.modifiers) {
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_up => self.move_up(),
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_down => self.move_down(),
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_left => self.move_left(),
-                    (code, modifiers) if (code, modifiers) == self.key_bindings.move_right => self.move_right(),
-                    (KeyCode::Up, _) => self.move_up(),
-                    (KeyCode::Down, _) => self.move_down(),
-                    (KeyCode::Left, _) => self.move_left(),
-                    (KeyCode::Right, _) => self.move_right(),
-                    (KeyCode::Char('r'), KeyModifiers::CONTROL) => self.read_file()?,
-                    (KeyCode::Esc, _) => self.show_binds = !self.show_binds,
-                    (KeyCode::Enter, _) => self.new_line(),
-                    (KeyCode::Char(v), _) => self.input_char(v),
-                    (KeyCode::Backspace, _) => self.backspace(),
-                    (KeyCode::Tab, _) => self.input_tab(),
-                    (KeyCode::PageUp, _) => self.page_up(),
-                    (KeyCode::PageDown, _) => self.page_down(),
-                    _ => {}
+                if self.vim_mode == true {
+                    match (key.code, key.modifiers) {
+                        (KeyCode::Char(':'), _) => {
+                            self.toggle_command_mode();
+                        },
+                        (KeyCode::Enter, _) => {
+                            if self.command_mode {
+                                self.execute_command();
+                            } else {
+                                self.new_line();
+                            }
+                        },
+                        (KeyCode::Backspace, _) => {
+                            if self.command_mode {
+                                self.command_input.pop();
+                            } else {
+                                self.backspace();
+                            }
+                        },
+                        (KeyCode::Esc, _) => {
+                            if self.command_mode {
+                                self.toggle_command_mode();
+                            }
+                        },
+                        (KeyCode::Char(v), _) => {
+                            if self.command_mode {
+                                self.handle_command_input(v);
+                            } else {
+                                self.input_char(v);
+                            }
+                        },
+                        (KeyCode::Up, _) => self.move_up(),
+                        (KeyCode::Down, _) => self.move_down(),
+                        (KeyCode::Left, _) => self.move_left(),
+                        (KeyCode::Right, _) => self.move_right(),
+                        _ => {}
+                    }
+                } else {
+                    match (key.code, key.modifiers) {
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.quit => break,
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.save => self.write_file()?,
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_up => self.move_up(),
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_down => self.move_down(),
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_left => self.move_left(),
+                        (code, modifiers) if (code, modifiers) == self.key_bindings.move_right => self.move_right(),
+                        (KeyCode::Up, _) => self.move_up(),
+                        (KeyCode::Down, _) => self.move_down(),
+                        (KeyCode::Left, _) => self.move_left(),
+                        (KeyCode::Right, _) => self.move_right(),
+                        (KeyCode::Char('r'), KeyModifiers::CONTROL) => self.read_file()?,
+                        (KeyCode::Tab, _) => self.input_tab(),
+                        (KeyCode::PageUp, _) => self.page_up(),
+                        (KeyCode::PageDown, _) => self.page_down(),
+                        (KeyCode::Backspace, _) => self.backspace(),
+                        (KeyCode::Enter, _) => self.new_line(),
+                        (KeyCode::Char(v), _) => self.input_char(v),
+                        _ => {}
+                    }
                 }
             } else if let Event::Mouse(mouse_event) = event::read()? {
                 match mouse_event.kind {
@@ -179,6 +222,52 @@ impl Alkaline {
         execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture, Show)?;
         Ok(())
     }
+
+    fn toggle_command_mode(&mut self) {
+        self.command_mode = !self.command_mode; // Toggle command mode
+        if !self.command_mode {
+            self.command_input.clear(); // Clear command input when exiting
+        }
+    }
+
+    fn handle_command_input(&mut self, c: char) {
+        if self.command_mode {
+            self.command_input.push(c); // Append character to command input
+        }
+    }
+
+    fn reset_terminal() {
+        let _ = Command::new("reset").status();
+    }
+
+
+    fn execute_command(&mut self) {
+        match self.command_input.trim() {
+            "q" => {
+                Atto::reset_terminal();
+                std::process::exit(0);
+
+            }
+            "w" => {
+                if let Err(e) = self.write_file() {
+                    eprintln!("Error writing file: {}", e);
+                }
+            }
+            "wq" => {
+                if let Err(e) = self.write_file() {
+                    eprintln!("Error writing file: {}", e);
+                }
+                Atto::reset_terminal();
+                std::process::exit(0);
+            }
+            _ => {
+                println!("Command not recognized: {}", self.command_input);
+            }
+        }
+        self.command_input.clear();
+        self.toggle_command_mode();
+    }
+
 
     fn page_up(&mut self) {
         if self.scroll_offset > 0 {
@@ -223,7 +312,7 @@ impl Alkaline {
 
     fn render<B: Backend>(&self, f: &mut tui::Frame<B>) {
         let size = f.size();
-        let block = Block::default().borders(Borders::NONE).title("Alkaline");
+        let block = Block::default().borders(Borders::NONE).title("Atto");
 
         let paragraph = Paragraph::new(
             self.buffer.iter().enumerate().skip(self.scroll_offset).take(self.terminal_height).map(|(i, line)| {
@@ -244,15 +333,20 @@ impl Alkaline {
     }
 
     fn render_status_bar<B: Backend>(&self, f: &mut tui::Frame<B>, size: tui::layout::Rect) {
-        let status_bar_height = 1;
-        let status_bar_area = tui::layout::Rect::new(0, size.height - status_bar_height, size.width, status_bar_height);
+        let status_bar_area = tui::layout::Rect::new(0, size.height - 1, size.width, 1); // Bottom row for the status bar
 
         let cursor_position = format!("Line: {}, Col: {}", self.cursor_y + 1, self.cursor_x + 1);
         let filename = self.filename.as_ref().map_or("Untitled".to_string(), |f| f.clone());
-        let status_text = format!(" {} | {}", filename, cursor_position);
+        let command_display = if self.command_mode {
+            format!(" :{}", self.command_input)
+        } else {
+            String::new()
+        };
+        let status_text = format!(" {} | {}{}", filename, cursor_position, command_display);
 
         let status_bar = Paragraph::new(status_text)
-            .block(Block::default().borders(Borders::NONE));
+            .block(Block::default().borders(Borders::NONE))
+            .style(Style::default().bg(Color::Black).fg(Color::White));
 
         f.render_widget(status_bar, status_bar_area);
     }
@@ -368,15 +462,15 @@ fn main() -> io::Result<()> {
     let lua = Lua::new();
 
 
-    let alkaline_conf = dirs::config_dir()
-        .map(|config_dir| config_dir.join("alkaline"))
+    let atto_conf = dirs::config_dir()
+        .map(|config_dir| config_dir.join("atto"))
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Configuration directory not found"))?;
 
-    if !alkaline_conf.exists() {
-        std::fs::create_dir_all(&alkaline_conf)?;
+    if !atto_conf.exists() {
+        fs::create_dir_all(&atto_conf)?;
     }
 
-    let config_path = alkaline_conf.join("config.lua");
+    let config_path = atto_conf.join("config.lua");
 
 
     if !config_path.exists() {
@@ -391,22 +485,28 @@ fn main() -> io::Result<()> {
         config.get("key_binding_preset").unwrap()
     });
 
+    let vim_mode: bool = lua.context(|lua_ctx| {
+        let config: Table = lua_ctx.load(&fs::read_to_string(&config_path).unwrap()).eval().unwrap();
+        config.get("vim_mode").unwrap()
+    });
 
-    let mut alkaline = Alkaline::new(filename, &preset);
-    alkaline.read_file()?;
+
+    let mut atto = Atto::new(filename, &preset, vim_mode);
+    atto.read_file()?;
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    alkaline.run(&mut terminal)?;
-    alkaline.write_file()?;
+    atto.run(&mut terminal)?;
+    atto.write_file()?;
     Ok(())
 }
 
 fn create_default_config(config_path: &str) -> io::Result<()> {
     let default_content = r#"
--- Default configuration for alkaline
+-- Default configuration for Atto
 return {
-    key_binding_preset = "alkaline" -- Options: "nano", "micro", "alkaline"
+    key_binding_preset = "atto", -- Options: "nano", "micro", "atto"
+    vim_mode = false,
 }
 "#;
 

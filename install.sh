@@ -1,10 +1,1 @@
-target=target/release/atto
-bin=/usr/bin
-
-if [ $(id -u) == 0 ]; then
-  cargo build --release
-  chmod +x $target
-  mv $target $bin
-else
-  echo "install.sh must be run with sudo. Doing nothing."
-fi
+git clone https://github.com/m0thman70/Atto && cd Atto && cargo build --release && cd target/release && mv atto /bin/atto && chmod +x /bin/atto
