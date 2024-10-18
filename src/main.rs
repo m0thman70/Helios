@@ -152,9 +152,6 @@ impl Atto {
             if let Event::Key(key) = event::read()? {
                 if self.vim_mode == true {
                     match (key.code, key.modifiers) {
-                        (KeyCode::Char(':'), _) => {
-                            self.toggle_command_mode();
-                        },
                         (KeyCode::Enter, _) => {
                             if self.command_mode {
                                 self.execute_command();
