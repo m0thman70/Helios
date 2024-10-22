@@ -19,9 +19,8 @@ or vim mode with vim or kakoune binds
 
 So after some people used it, here is a list of a few things that people seemingly want to see:
 
-- syntax highlighting -> possibly tree sitter
-- commands -> no idea how
-- a few people asked for modes but thats gonna be sidelined
+- tree sitter
+- plugins
 
 ### Install:
 
