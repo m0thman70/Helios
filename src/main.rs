@@ -166,32 +166,13 @@ impl Atto {
                     }
                     match (key.code, key.modifiers) {
 
-                        (KeyCode::Enter, _) => {
-                            if self.command_mode {
-                                self.execute_command();
-                            } else {
-                                self.new_line();
-                            }
-                        },
-                        (KeyCode::Backspace, _) => {
-                            if self.command_mode {
-                                self.command_input.pop();
-                            } else {
-                                self.backspace();
-                            }
-                        },
                         (KeyCode::Esc, _) => {
-                            if self.command_mode {
-                                self.toggle_command_mode();
-                            }
+                            self.toggle_command_mode();
+
                         },
                         (KeyCode::Char(v), _) => {
                             self.handle_command_input(v);
                         },
-                        (KeyCode::Up, _) => self.move_up(),
-                        (KeyCode::Down, _) => self.move_down(),
-                        (KeyCode::Left, _) => self.move_left(),
-                        (KeyCode::Right, _) => self.move_right(),
                         _ => {}
                     }
                 } else {
@@ -234,6 +215,10 @@ impl Atto {
         match key.code {
             KeyCode::Char('i') => self.mode = Mode::Insert,
             KeyCode::Char(':') => self.command_mode = true,
+            KeyCode::Backspace => self.command_mode = self.command_input.pop().is_some(),
+            KeyCode::Enter => if self.command_mode {
+                self.execute_command();
+            }
             KeyCode::Up => self.move_up(),
             KeyCode::Down => self.move_down(),
             KeyCode::Left => self.move_left(),
@@ -248,7 +233,8 @@ impl Atto {
 
     fn handle_insert_mode(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Esc => self.mode = Mode::Normal, // Return to Normal mode
+            KeyCode::Esc => self.mode = Mode::Normal,
+            KeyCode::Enter => self.new_line(),
             KeyCode::Backspace => self.backspace(),
             KeyCode::Char(c) => self.input_char(c),
             _ => {}
@@ -259,15 +245,15 @@ impl Atto {
 
 
     fn toggle_command_mode(&mut self) {
-        self.command_mode = !self.command_mode; // Toggle command mode
+        self.command_mode = !self.command_mode;
         if !self.command_mode {
-            self.command_input.clear(); // Clear command input when exiting
+            self.command_input.clear();
         }
     }
 
     fn handle_command_input(&mut self, c: char) {
         if self.command_mode {
-            self.command_input.push(c); // Append character to command input
+            self.command_input.push(c);
         }
     }
 
@@ -295,9 +281,7 @@ impl Atto {
                     Atto::reset_terminal();
                     std::process::exit(0);
                 }
-                _ => {
-                    println!("Kakoune Command not recognized: {}", self.command_input);
-                }
+                _ => {}
             }
         } else {
             match self.command_input.trim() {
@@ -317,9 +301,7 @@ impl Atto {
                     Atto::reset_terminal();
                     std::process::exit(0);
                 }
-                _ => {
-                    println!("Command not recognized: {}", self.command_input);
-                }
+                _ => {}
             }
         }
 
