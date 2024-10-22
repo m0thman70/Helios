@@ -11,7 +11,9 @@ pick your binds in the lua config, alkaline will make one on first start in a co
 
 pick between Atto, Nano, Micro and emacs*
 
-*pseudo emacs (thats something to fix for 0.3.0)
+*pseudo emacs
+
+or vim mode with vim or kakoune binds
 
 ### Next steps:
 
